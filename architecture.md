@@ -270,10 +270,20 @@ of editing the original purchase.
 
 ## Local operation and verification
 
-Apply the committed Alembic migration before starting the API, as documented in
-[README.md](README.md). Startup does not initialize the schema. The `/health`
-endpoint checks process availability only, so a healthy response does not establish
-that the database is usable. CORS permits the configured local frontend origin.
+Docker Compose initializes the schema through a one-time migration service using
+the backend build configuration and database URL. Startup follows:
+**Postgres healthy → `alembic upgrade head` succeeds → backend healthy → frontend**.
+The backend depends on successful migration completion, so migration failures
+block it from starting. A successful migration container exits with code 0;
+subsequent Compose starts can apply pending revisions without resetting data.
+Migrations run separately from API processes to avoid each worker trying to
+initialize the schema. This local startup design does not coordinate simultaneous
+deployments from multiple Compose invocations.
+
+For local Uvicorn development, apply migrations manually before serving requests,
+as documented in [README.md](README.md). The `/health` endpoint checks process
+availability only, not database or schema readiness. CORS permits the configured
+local frontend origin.
 
 Backend integration tests run against a migrated disposable Postgres database.
 They cover validation, qualification, card state, ownership checks, idempotency,
@@ -289,7 +299,8 @@ The latest repository review ran 197 passing backend tests and a successful
 TypeScript/production build. There is no committed frontend interaction test suite;
 browser walkthroughs and fresh-database setup checks remain separate verification
 steps. Test fixtures migrate their own database and do not prove startup applies
-migrations automatically.
+migrations through the Compose dependency chain. A fresh-stack smoke test checks
+that startup path separately from the integration-test fixtures.
 
 ## Scope and future improvements
 

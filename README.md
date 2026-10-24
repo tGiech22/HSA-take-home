@@ -15,15 +15,16 @@ existing `.env` configuration.
 
 ```sh
 cp .env.example .env
-docker compose up -d --wait db
-docker compose build
-docker compose run --rm backend alembic upgrade head
 docker compose up --build
 ```
 
-**The migration command is required.** Startup does not apply migrations or create
-tables automatically. It is safe to run `alembic upgrade head` again to apply any
-pending revisions; reviewers do not need to generate migrations.
+Compose waits for Postgres to be healthy, then runs the one-time `migrate` service
+(`alembic upgrade head`). The backend starts only after migrations succeed, and
+the frontend starts after the backend is healthy. A migration failure blocks
+backend startup; inspect it with `docker compose logs migrate`. The migration
+container exiting with code 0 is expected. Running the stack again applies any
+pending migrations without clearing existing data; reviewers do not need to
+generate migrations.
 
 | Service | URL |
 | --- | --- |
@@ -31,8 +32,9 @@ pending revisions; reviewers do not need to generate migrations.
 | Interactive API documentation | http://localhost:8000/docs |
 | API process health | http://localhost:8000/health |
 
-Compose waits for dependency health checks. `/health` checks the API process only;
-it does not verify database connectivity or that migrations have been applied.
+`/health` checks the API process only; it does not verify database connectivity or
+schema state. The Compose dependency chain ensures migrations complete before
+initial API startup.
 
 Stop with `docker compose down`. Database data persists in a named Docker volume.
 Rebuild with `docker compose up --build` after code or dependency changes. The
@@ -67,6 +69,9 @@ The dashboard shows five recent transactions; the API exposes paginated full his
 
 Prerequisites: Python 3.12+, Node.js 22.12+ (or 20.19+), and Docker Compose for
 Postgres. From the repository root:
+
+When running Uvicorn directly, apply migrations manually as shown below; the
+automatic migration service is part of the full Compose startup.
 
 ```sh
 cp .env.example .env
