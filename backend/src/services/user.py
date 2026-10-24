@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -6,6 +7,10 @@ from src.database.models import User
 
 class DuplicateEmailError(Exception):
     pass
+
+
+def list_users(session: Session) -> list[User]:
+    return list(session.scalars(select(User).order_by(User.id)).all())
 
 
 def create_user(session: Session, *, name: str, email: str) -> User:

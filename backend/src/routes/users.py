@@ -7,9 +7,15 @@ from src.database.session import get_session
 from src.schemas.account import AccountCreate, AccountResponse
 from src.schemas.user import UserCreate, UserResponse
 from src.services.account import UserNotFoundError, create_account
-from src.services.user import DuplicateEmailError, create_user
+from src.services.user import DuplicateEmailError, create_user, list_users
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+@router.get("", response_model=list[UserResponse])
+def get_users(session: Annotated[Session, Depends(get_session)]):
+    """List all users for manual inspection and testing through the OpenAPI docs."""
+    return list_users(session)
 
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
