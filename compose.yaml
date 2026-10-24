@@ -15,22 +15,33 @@ services:
       timeout: 5s
       retries: 10
   backend:
-    build:
+    build: &backend-build
       context: .
       dockerfile: backend/Dockerfile
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-hsa}:${POSTGRES_PASSWORD:-hsa_local}@db:5432/${POSTGRES_DB:-hsa}
+      DATABASE_URL: &database-url postgresql+psycopg://${POSTGRES_USER:-hsa}:${POSTGRES_PASSWORD:-hsa_local}@db:5432/${POSTGRES_DB:-hsa}
       CORS_ORIGINS: '${CORS_ORIGINS:-["http://localhost:5173"]}'
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 5s
       timeout: 5s
       retries: 10
+  migrate:
+    build: *backend-build
+    environment:
+      DATABASE_URL: *database-url
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
   frontend:
     build: ./frontend
     ports:
