@@ -18,6 +18,19 @@ class ActiveCardExistsError(Exception):
     pass
 
 
+def list_cards(session: Session, *, user_id: int, account_id: int) -> list[DebitCard]:
+    """Return all account cards newest first, without changing stored statuses."""
+    if session.scalar(
+        select(Account.id).where(Account.id == account_id, Account.user_id == user_id)
+    ) is None:
+        raise AccountNotFoundError
+    return list(session.scalars(
+        select(DebitCard)
+        .where(DebitCard.account_id == account_id)
+        .order_by(DebitCard.created_at.desc(), DebitCard.id.desc())
+    ).all())
+
+
 def lock_account(session: Session, *, user_id: int, account_id: int) -> None:
     """Card operations and purchases acquire the account lock before card locks."""
     if session.scalar(

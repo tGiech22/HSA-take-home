@@ -5,10 +5,23 @@ from sqlalchemy.orm import Session
 
 from src.database.session import get_session
 from src.schemas.card import CardCreate, CardResponse
-from src.services.card import ActiveCardExistsError, CardNotFoundError, deactivate_card, issue_card
+from src.services.card import ActiveCardExistsError, CardNotFoundError, deactivate_card, issue_card, list_cards
 from src.services.deposit import AccountNotFoundError
 
 router = APIRouter(prefix="/users/{user_id}/accounts/{account_id}/cards", tags=["cards"])
+
+
+@router.get("", response_model=list[CardResponse])
+def get_cards(
+    user_id: Annotated[int, Path(gt=0, le=2_147_483_647)],
+    account_id: Annotated[int, Path(gt=0, le=2_147_483_647)],
+    session: Annotated[Session, Depends(get_session)],
+):
+    """List active, inactive, and expired cards for the selected user's account."""
+    try:
+        return list_cards(session, user_id=user_id, account_id=account_id)
+    except AccountNotFoundError as error:
+        raise HTTPException(status_code=404, detail="Account not found.") from error
 
 
 @router.post("", response_model=CardResponse, status_code=201)
