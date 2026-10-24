@@ -54,6 +54,13 @@ when implementing features. CORS permits the local frontend origin.
 
 ## Checks
 
+User and account endpoint tests require running Postgres and a database role with
+permission to create databases. They migrate a uniquely named temporary database,
+isolate each test with a rolled-back transaction, and remove the temporary
+database afterward. Application data is not modified. By default, they use
+`DATABASE_URL` from the backend settings; set `TEST_DATABASE_ADMIN_URL` to use a
+different PostgreSQL server or role.
+
 ```sh
 # From the root, after installing backend dependencies:
 .venv/bin/python -m pytest -c backend/pyproject.toml
