@@ -9,6 +9,7 @@ from sqlalchemy import (
     Index,
     String,
     Text,
+    UniqueConstraint,
     func,
     text,
 )
@@ -21,6 +22,7 @@ from src.enums import CardStatus
 class DebitCard(Base):
     __tablename__ = "debit_cards"
     __table_args__ = (
+        UniqueConstraint("id", "account_id", name="uq_debit_cards_id_account"),
         CheckConstraint(
             "last_four ~ '^[0-9]{4}$'", name="ck_debit_cards_last_four_digits"
         ),

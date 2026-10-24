@@ -6,6 +6,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Text,
     UniqueConstraint,
@@ -20,6 +21,11 @@ from src.enums import DeclineReason, ExpenseCategory, TransactionStatus, Transac
 class Transaction(Base):
     __tablename__ = "transactions"
     __table_args__ = (
+        ForeignKeyConstraint(
+            ["card_id", "account_id"],
+            ["debit_cards.id", "debit_cards.account_id"],
+            name="fk_transactions_card_account",
+        ),
         CheckConstraint("amount_cents > 0", name="ck_transactions_positive_amount"),
         CheckConstraint(
             "(type = 'DEPOSIT' AND card_id IS NULL AND category IS NULL) OR "
@@ -42,7 +48,7 @@ class Transaction(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"), nullable=False)
-    card_id: Mapped[int | None] = mapped_column(ForeignKey("debit_cards.id"))
+    card_id: Mapped[int | None] = mapped_column(nullable=True)
     amount_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
     balance_change_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
     category: Mapped[ExpenseCategory | None] = mapped_column(
