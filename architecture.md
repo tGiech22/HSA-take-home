@@ -33,6 +33,26 @@ services also accessing account and card models. For example, transaction histor
 is exposed through a route and an ownership-checking service that calls the
 existing `list_transactions` helper. History is implemented, not just groundwork.
 
+### Frontend state and API access
+
+The application shell holds the selected user and account in memory and shares
+them between the dashboard and deposit page. Selecting a different user clears
+the account selection; selecting a different account resets the dashboard's local
+state. Pending dashboard reads are cancelled when the account changes so an old
+response cannot overwrite the new account's data.
+
+A shared Fetch helper handles JSON requests and readable HTTP, validation, and
+network errors. The dashboard loads balance, cards, and recent transactions
+independently, with loading, empty, error, and retry states. The current account
+balance comes from the account-list endpoint; the selector filters that list by
+the selected user. These frontend filters are not access control.
+
+The dashboard remains mounted while the deposit page is open. Returning after a
+deposit preserves the displayed data until the reviewer uses **Refresh data**;
+successful purchases and card actions trigger dashboard reloads. Full Transaction
+History and transaction-detail views, deposit history, and a dedicated Concurrent
+Purchase Demo UI remain planned features rather than implemented pages.
+
 ## Data model
 
 All tables use integer primary keys. These are easy to read and type during local
@@ -96,7 +116,46 @@ movement. Holds, settlement, and refunds would benefit from separate transaction
 or authorization records and ledger entries, potentially using double-entry
 accounting. The current model is not a double-entry ledger.
 
+### Invariants and enforcement
+
+| Invariant | Enforcement |
+| --- | --- |
+| Account balance never becomes negative | Conditional debit and database check constraint. |
+| Balance matches the sum of ledger changes | Services commit balance and ledger changes atomically; reconciliation tests verify equality. No aggregate database constraint enforces this against arbitrary writes. |
+| Deposits and purchases have positive amounts | Strict request validation and a positive-amount database check constraint. |
+| Approved deposits add their amount; approved purchases subtract it; declines have zero impact | Service logic and a database outcome constraint linking type, status, amount, balance change, and decline reason. |
+| An approved purchase uses an active, unexpired card and qualified category | Server-side business checks performed while the account is locked. |
+| A purchase card belongs to its account | Account-scoped card lookup and a composite card/account foreign key. |
+| New accounts start at zero | Account creation omits the balance; the database default is zero. |
+| At most one card per account has stored `ACTIVE` status | Account locking during issuance and a partial unique index. |
+| One account-scoped idempotency key cannot create multiple financial operations | Request-hash comparison, unique constraint, and transaction/replay handling. |
+| Existing transaction rows are not edited through application flows | Append-only ledger helpers and no update/delete endpoints; not database-enforced immutability. |
+| Account-specific operations validate the supplied user/account relationship | Service ownership checks; selected-user mode does not authenticate the caller. |
+
 ## Request flows
+
+### Implemented API surface
+
+In this table, `{account_path}` means
+`/users/{user_id}/accounts/{account_id}`.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | API process health. |
+| `GET` | `/users` | List simulator users. |
+| `POST` | `/users` | Create a user. |
+| `GET` | `/accounts` | List all simulator accounts. |
+| `POST` | `/users/{user_id}/accounts` | Create an account for a user. |
+| `GET` | `{account_path}/cards` | List all cards for an account, newest first. |
+| `POST` | `{account_path}/cards` | Issue a virtual card. |
+| `POST` | `{account_path}/cards/{card_id}/deactivate` | Deactivate a card. |
+| `POST` | `{account_path}/deposits` | Deposit funds. |
+| `POST` | `{account_path}/purchases` | Simulate a purchase. |
+| `GET` | `{account_path}/transactions` | List transactions newest first, with `limit` (1–100, default 100) and nonnegative `offset`. |
+
+The interactive schemas are available at `/docs`. Individual-user,
+individual-account, and transaction-detail GET routes, and a PATCH-card route,
+are not currently implemented.
 
 ### Create an account and issue a card
 
@@ -155,6 +214,10 @@ return `404`, invalid inputs return `422`, and idempotency conflicts return `409
 Correctness depends on PostgreSQL, not an in-memory Python lock. Purchases and card
 changes acquire the account row lock before card locks. Conflicting operations on
 one account wait for one another, while unrelated accounts can proceed independently.
+The account lock is acquired before purchase replay and eligibility checks.
+Operations can lock multiple rows, including cards updated during expiration
+processing; the policy is consistent account-before-card ordering, not a limit
+of one locked row per operation.
 The purchase's conditional debit and the database's nonnegative-balance constraint
 provide additional protection. Deposits use an atomic SQL increment, which also
 acquires a row lock and coordinates with competing balance updates.
@@ -174,6 +237,14 @@ hash of the normalized operation payload distinguishes a replay from reuse for a
 different request. A matching replay returns the original outcome without applying
 another balance change; a different payload returns a conflict. New outcomes return
 `201`; replays return `200`.
+
+| Request case within an account | Result |
+| --- | --- |
+| New key and valid request | Process a new operation, subject to eligibility, funds, and balance limits. |
+| Same key and same payload | Return the original outcome without moving money again, including a prior business decline. |
+| Same key and different payload | Return `409` without applying another operation. |
+| Concurrent requests with the same key | Apply at most one operation; matching requests retrieve the same outcome, while conflicting payloads are rejected. |
+| Separate requests with different keys | Treat them as separate operations; each still must pass validation and business checks, so both purchases are not necessarily approved. |
 
 Concurrent duplicate deposits can both initially miss the prior entry. The unique
 constraint allows only one to commit; the losing transaction rolls back its balance
@@ -229,6 +300,8 @@ listing endpoints expose simulator data. This is not production access control.
 The simulator assumes immediate deposits, no holds or settlement delay, no refunds,
 no external banking or card network, and no contribution limits, investments,
 interest, fees, tax reporting, or medical-record storage.
+HDHP eligibility is assumed rather than verified, employer contributions are
+outside scope, and accounts have no separate active/inactive lifecycle.
 
 With more time, priorities would be browser flow tests, improved deposit feedback
 and retries, full history navigation, and a fresh-start setup smoke test. A
