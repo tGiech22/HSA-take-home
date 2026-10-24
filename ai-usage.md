@@ -95,10 +95,9 @@ and identified the fresh-database startup problem below.
 ## An incomplete AI output and how it was corrected
 
 The earlier AI-assisted setup started the API without applying database migrations,
-and the original setup guidance omitted that initialization step. A later Codex
-audit reported reproducing `/health` returning `200` while `/users` returned `500`
-against an empty database. A running API process did not establish that the
-application was usable.
+and the original setup guidance omitted that initialization step. I ran a Codex
+audit to test setup and saw that it reported reproducing `/health` returning `200` while `/users` returned `500`
+against an empty database.
 
 I brought the issue back to Codex and asked for a proposed fix before approving
 the changes. The final Compose configuration adds a migration service and starts
