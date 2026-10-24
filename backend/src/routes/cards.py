@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Path
 from sqlalchemy.orm import Session
 
 from src.database.session import get_session
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/users/{user_id}/accounts/{account_id}/cards", tags=[
 
 @router.post("", response_model=CardResponse, status_code=201)
 def create_card(
-    user_id: int, account_id: int, request: CardCreate,
+    user_id: Annotated[int, Path(gt=0, le=2_147_483_647)], account_id: Annotated[int, Path(gt=0, le=2_147_483_647)], request: CardCreate,
     session: Annotated[Session, Depends(get_session)],
 ):
     """Issue a simulated card, automatically deactivating expired cards first."""
@@ -28,7 +28,7 @@ def create_card(
 
 @router.post("/{card_id}/deactivate", response_model=CardResponse)
 def make_card_inactive(
-    user_id: int, account_id: int, card_id: int,
+    user_id: Annotated[int, Path(gt=0, le=2_147_483_647)], account_id: Annotated[int, Path(gt=0, le=2_147_483_647)], card_id: Annotated[int, Path(gt=0, le=2_147_483_647)],
     session: Annotated[Session, Depends(get_session)],
 ):
     """Deactivate a card, including one that has not expired. Repeats are harmless."""

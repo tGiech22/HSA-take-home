@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response
+from fastapi import APIRouter, Depends, Header, Path, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from src.database.session import get_session
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/users/{user_id}/accounts/{account_id}/purchases", ta
 @router.post("", response_model=TransactionResponse, status_code=201,
              responses={200: {"model": TransactionResponse, "description": "Idempotent replay"}})
 def purchase(
-    user_id: int, account_id: int, request: PurchaseCreate, response: Response,
+    user_id: Annotated[int, Path(gt=0, le=2_147_483_647)], account_id: Annotated[int, Path(gt=0, le=2_147_483_647)], request: PurchaseCreate, response: Response,
     session: Annotated[Session, Depends(get_session)],
     idempotency_key: Annotated[str, Header(min_length=1, max_length=255, pattern=r"\S")],
 ):

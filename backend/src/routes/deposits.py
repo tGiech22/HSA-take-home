@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Header, Path, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from src.database.session import get_session
@@ -23,8 +23,8 @@ router = APIRouter(prefix="/users/{user_id}/accounts/{account_id}/deposits", tag
     responses={200: {"model": TransactionResponse, "description": "Idempotent replay"}},
 )
 def deposit(
-    user_id: int,
-    account_id: int,
+    user_id: Annotated[int, Path(gt=0, le=2_147_483_647)],
+    account_id: Annotated[int, Path(gt=0, le=2_147_483_647)],
     request: DepositCreate,
     response: Response,
     session: Annotated[Session, Depends(get_session)],
