@@ -1,5 +1,4 @@
 from datetime import date, datetime
-from enum import StrEnum
 
 from sqlalchemy import (
     CheckConstraint,
@@ -16,11 +15,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.database.base import Base
-
-
-class CardStatus(StrEnum):
-    ACTIVE = "ACTIVE"
-    INACTIVE = "INACTIVE"
+from src.enums import CardStatus
 
 
 class DebitCard(Base):

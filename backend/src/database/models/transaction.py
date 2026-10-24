@@ -1,5 +1,4 @@
 from datetime import datetime
-from enum import StrEnum
 
 from sqlalchemy import (
     BigInteger,
@@ -15,24 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.database.base import Base
-from src.enums import ExpenseCategory
-
-
-class TransactionType(StrEnum):
-    DEPOSIT = "DEPOSIT"
-    PURCHASE = "PURCHASE"
-
-
-class TransactionStatus(StrEnum):
-    APPROVED = "APPROVED"
-    DECLINED = "DECLINED"
-
-
-class DeclineReason(StrEnum):
-    INSUFFICIENT_FUNDS = "INSUFFICIENT_FUNDS"
-    INVALID_EXPENSE = "INVALID_EXPENSE"
-    INACTIVE_CARD = "INACTIVE_CARD"
-    EXPIRED_CARD = "EXPIRED_CARD"
+from src.enums import DeclineReason, ExpenseCategory, TransactionStatus, TransactionType
 
 
 class Transaction(Base):

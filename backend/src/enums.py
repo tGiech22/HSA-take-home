@@ -1,5 +1,28 @@
 from enum import StrEnum
 
+
+class TransactionType(StrEnum):
+    DEPOSIT = "DEPOSIT"
+    PURCHASE = "PURCHASE"
+
+
+class TransactionStatus(StrEnum):
+    APPROVED = "APPROVED"
+    DECLINED = "DECLINED"
+
+
+class DeclineReason(StrEnum):
+    INSUFFICIENT_FUNDS = "INSUFFICIENT_FUNDS"
+    INVALID_EXPENSE = "INVALID_EXPENSE"
+    INACTIVE_CARD = "INACTIVE_CARD"
+    EXPIRED_CARD = "EXPIRED_CARD"
+
+
+class CardStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+
+
 class ExpenseCategory(StrEnum):
     DOCTOR_VISIT = "DOCTOR_VISIT"
     PHARMACY = "PHARMACY"
